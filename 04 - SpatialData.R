@@ -1,12 +1,6 @@
-library(keras)
-library(reticulate)
-library(foreign)
-library(dplyr)
-library(lubridate)
-
-#https://keras.io/getting-started/sequential-model-guide/
-#https://machinelearningmastery.com/time-series-prediction-lstm-recurrent-neural-networks-python-keras/
-#https://blog.rstudio.com/2017/09/05/keras-for-r/
+library(rgeos)
+library(sp)
+library(rgdal)
 
 #Load the data
 load("Data\\DadosGWR.RData")
@@ -14,6 +8,19 @@ rm(list=setdiff(ls(), "dados"))
 
 #Features
 real.df <- dados[,c("Longitude","Latitude","VLR_PACTUA","Tempo")]
+real.df$Longitude <- as.numeric(as.character(real.df$Longitude))
+real.df$Latitude <- as.numeric(as.character(real.df$Latitude))
+#Read map
+map <- readOGR("Malhas","53SEE250GC_SIR",verbose = FALSE)
+proj4string(map) <-CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+# Assignment modified according
+real.spdf <- SpatialPointsDataFrame(real.df[,c("Longitude", "Latitude")], real.df[,c("Longitude","Latitude","VLR_PACTUA","Tempo")])
+proj4string(real.spdf) <-CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+# Set the projection of the SpatialPointsDataFrame using the projection of the shapefile
+proj4string(real.spdf) <- proj4string(map)
+
 real.df<-na.omit(real.df)
 real.df$day_number <- as.numeric(difftime(real.df$Tempo, min(real.df$Tempo),units="days"))
 real.df<-real.df[,-4]

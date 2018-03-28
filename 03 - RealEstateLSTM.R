@@ -4,9 +4,7 @@ library(foreign)
 library(dplyr)
 library(lubridate)
 
-#https://keras.io/getting-started/sequential-model-guide/
-#https://machinelearningmastery.com/time-series-prediction-lstm-recurrent-neural-networks-python-keras/
-#https://blog.rstudio.com/2017/09/05/keras-for-r/
+#https://machinelearningmastery.com/multivariate-time-series-forecasting-lstms-keras/
 
 #Load the data
 load("Data\\DadosGWR.RData")
@@ -21,10 +19,6 @@ real.mat <- as.matrix(real.df)
 
 # Set `dimnames` to `NULL`
 dimnames(real.mat) <- NULL
-
-#Normalize
-real.mat<-apply(real.mat,2,as.numeric)
-real.mat<-apply(real.mat,2,function(x) (x-min(x))/(max(x)-min(x)))
 
 #Sample
 ind <- sample(2, nrow(real.mat), replace=TRUE, prob=c(0.67, 0.33))
@@ -49,15 +43,16 @@ model %>%
   layer_dense(units = 1, activation = 'softmax')
 
 # Compile the model
-model %>% compile(optimizer='adam',
-                  loss='mse')
+model %>% compile(optimizer='rmsprop',
+                  loss='mse',
+                   optimizer='adam')
 
 # Fit the model 
 history <- model %>% fit(
   real.training, 
   real.trainingtarget, 
-  epochs = 200, 
-  batch_size = 10, 
+  epochs = 10, 
+  batch_size = 5, 
   validation_split = 0.2
 )
 
