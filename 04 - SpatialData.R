@@ -1,83 +1,90 @@
 library(rgeos)
 library(sp)
 library(rgdal)
-
+library(tidyverse)
+library(lubridate)
+library(zoo)
+library(geosphere)
 #Load the data
 load("Data\\DadosGWR.RData")
 rm(list=setdiff(ls(), "dados"))
-
+dadosCoord<-read.csv("Data\\Lote_siturb_padronizado.csv")
+dadosCoord<-dadosCoord[,c("Longitude","Latitude","Longitude_padrao","Latitude_padrao")]
 #Features
 real.df <- dados[,c("Longitude","Latitude","VLR_PACTUA","Tempo")]
 real.df$Longitude <- as.numeric(as.character(real.df$Longitude))
 real.df$Latitude <- as.numeric(as.character(real.df$Latitude))
+#Merge new Latitude
+final<- inner_join(dadosCoord,real.df,by=c("Longitude","Latitude")) %>% 
+        select(-Longitude,-Latitude)
+
 #Read map
 map <- readOGR("Malhas","53SEE250GC_SIR",verbose = FALSE)
-proj4string(map) <-CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
 
 # Assignment modified according
-real.spdf <- SpatialPointsDataFrame(real.df[,c("Longitude", "Latitude")], real.df[,c("Longitude","Latitude","VLR_PACTUA","Tempo")])
-proj4string(real.spdf) <-CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+real.spdf <- SpatialPointsDataFrame(final[,c("Longitude_padrao", "Latitude_padrao")], final[,c("Longitude_padrao","Latitude_padrao","VLR_PACTUA","Tempo")])
 
-# Set the projection of the SpatialPointsDataFrame using the projection of the shapefile
+#Find Setor Censitario
 proj4string(real.spdf) <- proj4string(map)
+setor<-over(real.spdf, map)
+real.spdf@data<-cbind(setor,real.spdf@data)
 
-real.df<-na.omit(real.df)
-real.df$day_number <- as.numeric(difftime(real.df$Tempo, min(real.df$Tempo),units="days"))
-real.df<-real.df[,-4]
-real.mat <- as.matrix(real.df)
+#Number of setor cenistarios
+count <- real.spdf@data %>% 
+  group_by(CD_GEOCODI, Date=floor_date(Tempo, "week")) %>% 
+  filter(Tempo > "2000-01-01") %>% 
+  summarize(amount=median(VLR_PACTUA))
 
-# Set `dimnames` to `NULL`
-dimnames(real.mat) <- NULL
-
-#Normalize
-real.mat<-apply(real.mat,2,as.numeric)
-real.mat<-apply(real.mat,2,function(x) (x-min(x))/(max(x)-min(x)))
-
-#Sample
-ind <- sample(2, nrow(real.mat), replace=TRUE, prob=c(0.67, 0.33))
-
-# Split the data
-real.training <- real.mat[ind==1, c(1,2,4)]
-real.test <- real.mat[ind==2,  c(1,2,4)]
-
-# Split the class attribute
-real.trainingtarget <- as.numeric(real.mat[ind==1, 3])
-real.testtarget <- as.numeric(real.mat[ind==2, 3])
-
-#Begin the model
-model <- keras_model_sequential() 
-
-#Architeture
-model %>% 
-  layer_dense(units = 256, activation = 'relu', input_shape = 3) %>% 
-  layer_dropout(rate = 0.4) %>% 
-  layer_dense(units = 128, activation = 'relu') %>%
-  layer_dropout(rate = 0.3) %>%
-  layer_dense(units = 1, activation = 'softmax')
-
-# Compile the model
-model %>% compile(optimizer='adam',
-                  loss='mse')
-
-# Fit the model 
-history <- model %>% fit(
-  real.training, 
-  real.trainingtarget, 
-  epochs = 200, 
-  batch_size = 10, 
-  validation_split = 0.2
+#Create Sequence
+count<- merge(
+  x = data.frame(
+    Date = seq.Date(min(count$Date), max(count$Date), by = "month")
+  ),
+  y = count,
+  all.x = TRUE
 )
+#Remove NA
+count <- count[!is.na(count$CD_GEOCODI),]
+long <- count %>% spread(Date, amount)
 
-plot(history)
+#Neighborhood matrix
+map.temp <- unique(real.spdf@data[,c("CD_GEOCODI","Longitude_padrao","Latitude_padrao")])
+map.temp <- map.temp %>% 
+            group_by(CD_GEOCODI) %>% 
+            summarise(Longitude_padrao=mean(Longitude_padrao),
+                      Latitude_padrao=mean(Latitude_padrao))
+setor.map <- map.temp %>% inner_join(long,"CD_GEOCODI")
 
+# create a distance matrix
+m <- distm(setor.map[2:3], setor.map[2:3], fun = distVincentyEllipsoid)
 
-#Evaluate
-score <- model %>% evaluate(real.test, real.testtarget, batch_size = 128)
-sqrt(score) #rmse
+# replace the diagonal with NA
+diag(m) <- 0
 
-### Make Submission
-model %>% fit(real.training, real.trainingtarget, epochs=100, batch_size=128)
+# make column names for the distance matrix
+colnames(m) <- paste0('r',1:nrow(setor.map))
 
-#Prediction
-y <- predict(model, real.test)
+#Standadized the rows
+for(i in 1:nrow(m)){
+  m[i,]<-m[i,]/sum(m[i,])
+}
 
+#Create the weighted Amount
+x<-as.matrix(setor.map[,c(-1,-2,-3)])
+x[is.na(x)] <- 0
+x<-m%*%x
+x<-data.frame(setor.map[,c(1,2,3)],x)
+
+#Replace NA 
+setor.map[is.na(setor.map)]<-x[is.na(setor.map)]
+
+#Colnames matrix
+x<-x[,c(-1,-2,-3)]
+colnames(x) <- paste0('neigh',colnames(x))
+
+#Final Data
+final<-cbind(setor.map,x)
+
+rm(list = ls()[!ls() %in% c("final", "map","real.df")])
+
+save.image("Data\\FinalData.RData")
