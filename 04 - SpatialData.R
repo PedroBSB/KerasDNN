@@ -72,7 +72,9 @@ for(i in 1:nrow(m)){
 #Create the weighted Amount
 x<-as.matrix(setor.map[,c(-1,-2,-3)])
 x[is.na(x)] <- 0
+x<-apply(x,2,function(x) (x-min(x))/(max(x)-min(x)))
 x<-m%*%x
+setor.map[,c(-1,-2,-3)]<-apply(setor.map[,c(-1,-2,-3)],2,function(x) (x-min(x))/(max(x)-min(x)))
 x<-data.frame(setor.map[,c(1,2,3)],x)
 
 #Replace NA 
@@ -85,6 +87,9 @@ colnames(x) <- paste0('neigh',colnames(x))
 #Final Data
 final<-cbind(setor.map,x)
 
-rm(list = ls()[!ls() %in% c("final", "map","real.df")])
+#Rename weight matrix
+weight.Mat<-m
+
+rm(list = ls()[!ls() %in% c("final", "map","real.df","weight.Mat","setor.map")])
 
 save.image("Data\\FinalData.RData")
