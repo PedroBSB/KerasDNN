@@ -122,7 +122,7 @@ plot(map)
 
 #Google maps
 sfn.df2<-na.omit(sfn.df)
-map2 <- get_map(location=bbox, source='google', maptype = 'terrain', color='bw')
+map2 <- get_map(location=bbox, source='google', maptype = 'satellite')
 
 #Constrói o mapa:
 map2 <- ggmap(map2, base_layer=ggplot(data=sfn.df2, aes(x=long, y=lat)), 
