@@ -114,11 +114,11 @@ map <- map + geom_polygon(data=sfn.df,aes(x = long, y = lat, group = group, fill
 map <- map +   geom_path(aes(x = long, y = lat, group = group),
                          data = sfn.df, colour = "grey50", alpha = .7, size = .4, linetype=2)  
 map <- map + coord_equal() 
-map <- map + scale_fill_gradientn(colours = myPalette(4))
+map <- map + scale_fill_gradientn(colours = myPalette(4), na.value = "transparent",name = "Normalized\nPrice")
 map<-map +  ggtitle("Housevalue predict") +  labs(x="Longitude",y="Latitude") 
 #Plota o mapa
 plot(map)
-
+ggsave(filename="MT2022-06-02.pdf", plot=map)
 
 #Google maps
 sfn.df2<-na.omit(sfn.df)
@@ -131,7 +131,8 @@ map2 <- map2 + geom_polygon(data=sfn.df2,aes(x = long, y = lat, group = group, f
 map2 <- map2 +   geom_path(aes(x = long, y = lat, group = group),
                          data = sfn.df2, colour = NA, alpha = .7, size = .4, linetype=2)  
 map2 <- map2 + coord_equal() 
-map2 <- map2 + scale_fill_gradientn(colours = myPalette(4))
+map2 <- map2 + scale_fill_gradientn(colours = myPalette(4), na.value = "transparent",name = "Normalized\nPrice")
 map2<-map2 +  ggtitle("Housevalue predict") +  labs(x="Longitude",y="Latitude") 
 #Plota o mapa
 plot(map2)
+ggsave(filename="MS2022-06-02.pdf", plot=map2)
