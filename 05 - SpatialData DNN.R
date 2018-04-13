@@ -30,15 +30,15 @@ dimnames(real.mat) <- NULL
 real.mat<-apply(real.mat,2,as.numeric)
 #real.mat<-apply(real.mat,2,function(x) (x-min(x))/(max(x)-min(x)))
 
-design<-real.mat[,c(-28,-54)]
-target<-real.mat[,28]
+design<-real.mat[,c(-171,-351)]
+target<-real.mat[,171]
 
 #Begin the model
 model <- keras_model_sequential() 
 
 #Architeture
 model %>% 
-  layer_dense(units = 256, activation = 'tanh', input_shape = 52) %>% 
+  layer_dense(units = 256, activation = 'tanh', input_shape = 340) %>% 
   layer_dropout(rate = 0.4) %>% 
   layer_dense(units = 128, activation = 'tanh') %>%
   layer_dropout(rate = 0.3) %>%
@@ -61,7 +61,7 @@ plot(history)
 
 ####Generate Forecast (Time 1: 2014-03-02):
 n.ahead<-100
-design.for<-design[,1:26]
+design.for<-design[,1:170]
 forecast<-data.frame("TIME1"=target)
 for(i in 2:n.ahead){
   #Step 1: remove the first period
