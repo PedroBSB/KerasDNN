@@ -125,10 +125,6 @@ sfn.df<-merge(sfn.df, forecast,by.x="id", by.y="CD_GEOCODI",all.x=T)
 #Ordena os dados
 sfn.df<-sfn.df[order(sfn.df$order), ] 
 bbox <- ggmap::make_bbox(sfn.df$long, sfn.df$lat, f = 0.1)
-bbox[1]<- -48.30
-bbox[2]<- -16.07
-bbox[3]<- -47.31
-bbox[4]<- -15.51
 
 #Colors
 myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
