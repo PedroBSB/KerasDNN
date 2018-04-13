@@ -17,7 +17,7 @@ library(spdep)
 library(ggmap)
 library(plyr)
 library(Hmisc)
-
+library(gstat)
 #Load the data
 load("Data\\FinalData.RData")
 
@@ -81,6 +81,7 @@ colnames(forecast)<-seq(as.Date("2014/3/2"), by = "month", length.out = n.ahead)
 #Create the map
 forecast<-cbind(setor.map[,1:3],forecast)
 forecast$CD_GEOCODI<-as.character(forecast$CD_GEOCODI)
+
 #Read the map
 sfn <- readOGR("Malhas","53SEE250GC_SIR",verbose = FALSE) 
 
@@ -94,45 +95,101 @@ sfn <- spTransform(sfn, CRS("+proj=longlat +datum=WGS84"))
 #GGPLOt2 Transformation
 sfn.df <- fortify(sfn, region="CD_GEOCODI")
 
+#Merge with all CD_GEOCODI
+trueCentroids <- as.data.frame(gCentroid(sfn,byid=TRUE))
+sfn.data<-cbind(trueCentroids,sfn@data)
+forecast<-merge(forecast,sfn.data,by="CD_GEOCODI",all=T)
+forecast<-forecast[,c(-2,-3)]
+colnames(forecast)[c(102,103)]<-c("Longitude","Latitude")
+colnames(forecast)[c(2,101)]<-c("Begin","End")
+forecast<-as.data.frame(forecast)
+#Interpolate data
+idNA<-is.na(forecast$Begin)
+forecast.clean<-forecast[!idNA,]
+coordinates(forecast.clean) = ~Longitude + Latitude
+forecast.empty<-forecast[idNA,]
+coordinates(forecast.empty) = ~Longitude + Latitude
+idw <- idw(formula = End ~ 1, locations = forecast.clean, newdata = forecast.empty)
+forecast.empty$End<-idw$var1.pred
+idw <- idw(formula = Begin ~ 1, locations = forecast.clean, newdata = forecast.empty)
+forecast.empty$Begin<-idw$var1.pred
+forecast.final<-rbind(forecast.clean@data,forecast.empty@data)
+
+#Get the data.frame
+forecast<-forecast.final
+forecast<-forecast[,1:101]
+
 #Combine
 sfn.df<-merge(sfn.df, forecast,by.x="id", by.y="CD_GEOCODI",all.x=T)
 
 #Ordena os dados
 sfn.df<-sfn.df[order(sfn.df$order), ] 
 bbox <- ggmap::make_bbox(sfn.df$long, sfn.df$lat, f = 0.1)
+bbox[1]<- -48.30
+bbox[2]<- -16.07
+bbox[3]<- -47.31
+bbox[4]<- -15.51
 
 #Colors
 myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
 
 #Google maps
-map <- get_map(location=bbox, source='google', maptype = 'terrain', color='bw')
-
-#Constrói o mapa:
-map <- ggmap(map, base_layer=ggplot(data=sfn.df, aes(x=long, y=lat)), 
-             extent = "normal", maprange=FALSE)
-map <- map + geom_polygon(data=sfn.df,aes(x = long, y = lat, group = group, fill=`2022-06-02`), alpha = .6)  
-map <- map +   geom_path(aes(x = long, y = lat, group = group),
-                         data = sfn.df, colour = "grey50", alpha = .7, size = .4, linetype=2)  
-map <- map + coord_equal() 
-map <- map + scale_fill_gradientn(colours = myPalette(4), na.value = "transparent",name = "Normalized\nPrice")
-map<-map +  ggtitle("Housevalue predict") +  labs(x="Longitude",y="Latitude") 
-#Plota o mapa
-plot(map)
-ggsave(filename="MT2022-06-02.pdf", plot=map)
-
-#Google maps
-sfn.df2<-na.omit(sfn.df)
 map2 <- get_map(location=bbox, source='google', maptype = 'satellite')
 
 #Constrói o mapa:
-map2 <- ggmap(map2, base_layer=ggplot(data=sfn.df2, aes(x=long, y=lat)), 
+map2 <- ggmap(map2, base_layer=ggplot(data=sfn.df, aes(x=long, y=lat)), 
              extent = "normal", maprange=FALSE)
-map2 <- map2 + geom_polygon(data=sfn.df2,aes(x = long, y = lat, group = group, fill=`2022-06-02`), alpha = .6)  
+map2 <- map2 + geom_polygon(data=sfn.df,aes(x = long, y = lat, group = group, fill=End), alpha = .6)  
 map2 <- map2 +   geom_path(aes(x = long, y = lat, group = group),
-                         data = sfn.df2, colour = NA, alpha = .7, size = .4, linetype=2)  
+                         data = sfn.df, colour = NA, alpha = .7, size = .4, linetype=2)  
 map2 <- map2 + coord_equal() 
 map2 <- map2 + scale_fill_gradientn(colours = myPalette(4), na.value = "transparent",name = "Normalized\nPrice")
-map2<-map2 +  ggtitle("Housevalue predict") +  labs(x="Longitude",y="Latitude") 
+map2<-map2 +  ggtitle("") +  labs(x="Longitude",y="Latitude") 
 #Plota o mapa
 plot(map2)
-ggsave(filename="MS2022-06-02.pdf", plot=map2)
+ggsave(filename="MS2022-06-02.pdf", plot=map2, width = 210, height = 297, units = "mm")
+
+bbox <- ggmap::make_bbox(sfn.df$long, sfn.df$lat, f = 0.1)
+
+#Colors
+myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
+
+#Google maps
+map2 <- get_map(location=bbox, source='google', maptype = 'satellite')
+
+#Constrói o mapa:
+map <- ggmap(map2, base_layer=ggplot(data=sfn.df, aes(x=long, y=lat)), 
+              extent = "normal", maprange=FALSE)
+map2 <- map2 + geom_polygon(data=sfn.df,aes(x = long, y = lat, group = group, fill=End), alpha = .6)  
+map2 <- map2 +   geom_path(aes(x = long, y = lat, group = group),
+                           data = sfn.df, colour = NA, alpha = .7, size = .4, linetype=2)  
+map2 <- map2 + coord_equal() 
+map2 <- map2 + scale_fill_gradientn(colours = myPalette(4), na.value = "transparent",name = "Normalized\nPrice")
+map2<-map2 +  ggtitle("") +  labs(x="Longitude",y="Latitude") 
+#Plota o mapa
+plot(map2)
+ggsave(filename="MS2022-06-02.pdf", plot=map2, width = 210, height = 297, units = "mm")
+
+bbox[1]<- -48.25
+bbox[2]<- -16.00
+bbox[3]<- -48.00
+bbox[4]<- -15.75
+
+#Colors
+myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
+
+#Google maps
+map2 <- get_map(location=bbox, source='google', maptype = 'satellite')
+
+#Constrói o mapa:
+map <- ggmap(map2, base_layer=ggplot(data=sfn.df, aes(x=long, y=lat)), 
+             extent = "normal", maprange=FALSE)
+map2 <- map2 + geom_polygon(data=sfn.df,aes(x = long, y = lat, group = group, fill=End), alpha = .6)  
+map2 <- map2 +   geom_path(aes(x = long, y = lat, group = group),
+                           data = sfn.df, colour = NA, alpha = .7, size = .4, linetype=2)  
+map2 <- map2 + coord_equal() 
+map2 <- map2 + scale_fill_gradientn(colours = myPalette(4), na.value = "transparent",name = "Normalized\nPrice")
+map2<-map2 +  ggtitle("") +  labs(x="Longitude",y="Latitude") 
+#Plota o mapa
+plot(map2)
+ggsave(filename="PMS2022-06-02.pdf", plot=map2, width = 210, height = 297, units = "mm")

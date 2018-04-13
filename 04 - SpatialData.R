@@ -11,7 +11,7 @@ rm(list=setdiff(ls(), "dados"))
 dadosCoord<-read.csv("Data\\Lote_siturb_padronizado.csv")
 dadosCoord<-dadosCoord[,c("Longitude","Latitude","Longitude_padrao","Latitude_padrao")]
 #Features
-real.df <- dados[,c("Longitude","Latitude","VLR_PACTUA","Tempo")]
+real.df <- dados[,c("Longitude","Latitude","ValorM2","Tempo")]
 real.df$Longitude <- as.numeric(as.character(real.df$Longitude))
 real.df$Latitude <- as.numeric(as.character(real.df$Latitude))
 #Merge new Latitude
@@ -22,7 +22,7 @@ final<- inner_join(dadosCoord,real.df,by=c("Longitude","Latitude")) %>%
 map <- readOGR("Malhas","53SEE250GC_SIR",verbose = FALSE)
 
 # Assignment modified according
-real.spdf <- SpatialPointsDataFrame(final[,c("Longitude_padrao", "Latitude_padrao")], final[,c("Longitude_padrao","Latitude_padrao","VLR_PACTUA","Tempo")])
+real.spdf <- SpatialPointsDataFrame(final[,c("Longitude_padrao", "Latitude_padrao")], final[,c("Longitude_padrao","Latitude_padrao","ValorM2","Tempo")])
 
 #Find Setor Censitario
 proj4string(real.spdf) <- proj4string(map)
@@ -31,9 +31,9 @@ real.spdf@data<-cbind(setor,real.spdf@data)
 
 #Number of setor cenistarios
 count <- real.spdf@data %>% 
-  group_by(CD_GEOCODI, Date=floor_date(Tempo, "week")) %>% 
+  group_by(CD_GEOCODI, Date=floor_date(Tempo, "month")) %>% 
   filter(Tempo > "2000-01-01") %>% 
-  summarize(amount=median(VLR_PACTUA))
+  summarize(amount=median(ValorM2))
 
 #Create Sequence
 count<- merge(
