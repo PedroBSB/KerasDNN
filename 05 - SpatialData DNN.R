@@ -30,7 +30,7 @@ dimnames(real.mat) <- NULL
 real.mat<-apply(real.mat,2,as.numeric)
 #real.mat<-apply(real.mat,2,function(x) (x-min(x))/(max(x)-min(x)))
 
-design<-real.mat[,c(-171,-351)]
+design<-real.mat[,c(-171,-342)]
 target<-real.mat[,171]
 
 #Begin the model
@@ -151,41 +151,17 @@ bbox <- ggmap::make_bbox(sfn.df$long, sfn.df$lat, f = 0.1)
 myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
 
 #Google maps
-map2 <- get_map(location=bbox, source='google', maptype = 'satellite')
+map3 <- get_map(location=bbox, source='google', maptype = 'satellite')
 
 #Constrói o mapa:
-map <- ggmap(map2, base_layer=ggplot(data=sfn.df, aes(x=long, y=lat)), 
+map3 <- ggmap(map3, base_layer=ggplot(data=sfn.df, aes(x=long, y=lat)), 
               extent = "normal", maprange=FALSE)
-map2 <- map2 + geom_polygon(data=sfn.df,aes(x = long, y = lat, group = group, fill=End), alpha = .6)  
-map2 <- map2 +   geom_path(aes(x = long, y = lat, group = group),
+map3 <- map3 + geom_polygon(data=sfn.df,aes(x = long, y = lat, group = group, fill=Begin), alpha = .6)  
+map3 <- map3 +   geom_path(aes(x = long, y = lat, group = group),
                            data = sfn.df, colour = NA, alpha = .7, size = .4, linetype=2)  
-map2 <- map2 + coord_equal() 
-map2 <- map2 + scale_fill_gradientn(colours = myPalette(4), na.value = "transparent",name = "Normalized\nPrice")
-map2<-map2 +  ggtitle("") +  labs(x="Longitude",y="Latitude") 
+map3 <- map3 + coord_equal() 
+map3 <- map3 + scale_fill_gradientn(colours = myPalette(4), na.value = "transparent",name = "Normalized\nPrice")
+map3<-map3 +  ggtitle("") +  labs(x="Longitude",y="Latitude") 
 #Plota o mapa
-plot(map2)
-ggsave(filename="MS2022-06-02.pdf", plot=map2, width = 210, height = 297, units = "mm")
-
-bbox[1]<- -48.25
-bbox[2]<- -16.00
-bbox[3]<- -48.00
-bbox[4]<- -15.75
-
-#Colors
-myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
-
-#Google maps
-map2 <- get_map(location=bbox, source='google', maptype = 'satellite')
-
-#Constrói o mapa:
-map <- ggmap(map2, base_layer=ggplot(data=sfn.df, aes(x=long, y=lat)), 
-             extent = "normal", maprange=FALSE)
-map2 <- map2 + geom_polygon(data=sfn.df,aes(x = long, y = lat, group = group, fill=End), alpha = .6)  
-map2 <- map2 +   geom_path(aes(x = long, y = lat, group = group),
-                           data = sfn.df, colour = NA, alpha = .7, size = .4, linetype=2)  
-map2 <- map2 + coord_equal() 
-map2 <- map2 + scale_fill_gradientn(colours = myPalette(4), na.value = "transparent",name = "Normalized\nPrice")
-map2<-map2 +  ggtitle("") +  labs(x="Longitude",y="Latitude") 
-#Plota o mapa
-plot(map2)
-ggsave(filename="PMS2022-06-02.pdf", plot=map2, width = 210, height = 297, units = "mm")
+plot(map3)
+ggsave(filename="MS2014-03-02.pdf", plot=map3, width = 210, height = 297, units = "mm")
