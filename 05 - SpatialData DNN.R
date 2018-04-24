@@ -118,6 +118,7 @@ forecast.final<-rbind(forecast.clean@data,forecast.empty@data)
 #Get the data.frame
 forecast<-forecast.final
 forecast<-forecast[,1:101]
+forecast$Return<-round(100*((forecast$End-forecast$Begin)/forecast$Begin),2)
 
 #Combine
 sfn.df<-merge(sfn.df, forecast,by.x="id", by.y="CD_GEOCODI",all.x=T)
@@ -165,3 +166,25 @@ map3<-map3 +  ggtitle("") +  labs(x="Longitude",y="Latitude")
 #Plota o mapa
 plot(map3)
 ggsave(filename="MS2014-03-02.pdf", plot=map3, width = 210, height = 297, units = "mm")
+
+
+bbox <- ggmap::make_bbox(sfn.df$long, sfn.df$lat, f = 0.1)
+
+#Colors
+myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
+
+#Google maps
+map4 <- get_map(location=bbox, source='google', maptype = 'satellite')
+
+#Constrói o mapa:
+map4 <- ggmap(map4, base_layer=ggplot(data=sfn.df, aes(x=long, y=lat)), 
+              extent = "normal", maprange=FALSE)
+map4 <- map4 + geom_polygon(data=sfn.df,aes(x = long, y = lat, group = group, fill=Return), alpha = .6)  
+map4 <- map4 +   geom_path(aes(x = long, y = lat, group = group),
+                           data = sfn.df, colour = NA, alpha = .7, size = .4, linetype=2)  
+map4 <- map4 + coord_equal() 
+map4 <- map4 + scale_fill_gradientn(colours = myPalette(4), na.value = "transparent",name = "Return rate")
+map4<-map4 +  ggtitle("") +  labs(x="Longitude",y="Latitude") 
+#Plota o mapa
+plot(map4)
+ggsave(filename="MS-Return.pdf", plot=map4, width = 210, height = 297, units = "mm")
