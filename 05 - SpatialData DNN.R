@@ -52,12 +52,32 @@ model %>% compile(optimizer='adam',
 history <- model %>% fit(
   design, 
   target, 
-  epochs = 200, 
-  batch_size = 10, 
-  validation_split = 0.2
+  epochs = 1000, 
+  batch_size = 100, 
+  validation_split = 0.5
 )
 
 plot(history)
+
+dataGraph<-as.data.frame(history$metrics)
+dataGraph <- reshape2::melt(dataGraph)
+dataGraph$Spline<-ifelse(dataGraph$variable=="loss", "Training","Validation")
+#dataGraph$value<- 1e+10*dataGraph$value
+dataGraph$Epoch<-c(seq(1,nrow(as.data.frame(history$metrics))),seq(1,nrow(as.data.frame(history$metrics))))
+#quantile(dataGraph$value,probs=0.90)
+#idsRemove<-dataGraph$Epoch[which(dataGraph$value>4e+5)]
+#dataGraph<-dataGraph[-which(dataGraph$Epoch%in%idsRemove),]
+
+p <- ggplot(dataGraph, aes(Epoch, value))
+p<- p + geom_point(aes(colour = factor(Spline)), size = 1)
+#p<- p +  geom_smooth(method=lm,formula = y ~ splines::bs(x, 3), aes(fill= Spline))
+p<- p+  labs(
+  x = "Epoch",
+  y = "Loss value",
+  colour = "Groups"
+)
+p
+ggsave(filename="SplineTraining.pdf", plot=p, width = 210, height = 297, units = "mm")
 
 ####Generate Forecast (Time 1: 2014-03-02):
 n.ahead<-100
